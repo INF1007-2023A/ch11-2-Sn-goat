@@ -7,7 +7,7 @@ from character import *
 
 
 # On veut créer une action qui cause du dommage à un adversaire et qui restaure une portion de ce dommage à l'attaquant. On a déjà une classe qui inflige du dommage directement, on va donc en hériter et ajuster l'exécution de sa méthode use.
-class DrainingMove(...): # TODO: Hériter de la bonne classe
+class DrainingMove(SimpleDamagingMove): # TODO: Hériter de la bonne classe
 	"""
 	Applique du dommage normalement à un adversaire et restaure une partie de ce dommage en HP à l'utilisateur du move.
 	
@@ -18,11 +18,20 @@ class DrainingMove(...): # TODO: Hériter de la bonne classe
 	"""
 
 	# TODO: Le __init__ qui initialise la classe de base et l'attribut drain_factor
-
+	def __init__(self, name, power, min_level, drain_factor):
+		super().__init__(name, power, min_level)
+		self.drain_factor = drain_factor
 	# TODO: Surcharger la méthode `use` pour appliquer le dommage en réutilisant les méthodes de la classe de base. Il faut ensuite restaurer les points absorbés. HP restaurés = dommage * draining_factor
+	def use(self, opponent):
+		damage, crit = self.compute_damage(opponent)
+		hp_gained = damage * self.drain_factor
+		self.user.hp += hp_gained
+		msg = self.apply_damage(opponent, damage, crit)
+		msg += f"\n{self.user.name} healed {hp_gained:.f} hp"
+		return msg
 
 # On veut une action qui gagne en puissance à mesure que le combat avance, donc à chaque tour.
-class IntensifyingMove(...): # TODO: Hériter de la bonne classe
+class IntensifyingMove(SimpleDamagingMove): # TODO: Hériter de la bonne classe
 	"""
 	Applique du dommage normalement à un adversaire et restaure une partie de ce dommage en HP à l'utilisateur du move.
 	
@@ -35,9 +44,22 @@ class IntensifyingMove(...): # TODO: Hériter de la bonne classe
 	"""
 	
 	# TODO: Le __init__ qui initialise la classe de base et l'attribut bonus_increment. On créer aussi un attribut `current_bonus` qui compte le bonus actuel
+	def __init__(self, name, power, min_level, bonus_increment):
+		super().__init__(name, power, min_level)
+		self.bonus_increment = bonus_increment
+		self.current_bonus = 0
+		
 	# TODO: Surcharger la méthode `on_combat_begin` qui remet `current_bonus` à 0.
-
+	def on_combat_begin(self):
+		self.current_bonus = 0
 	# TODO: Surcharger la méthode `on_turn_begin` qui ajoute `bonus_increment` à `current_bonus`.
+	def on_turn_begins(self):
+		self.current_bonus += self.bonus_increment
+		return f"{self.user.name}'s {self.name} has {self.current_bonus}"
+
 
 	# TODO: Surcharger la méthode `compute_damage` qui réutilise la version de la classe de base en lui ajoutant le bonus accumulé.
-
+	def compute_damage(self, opponent):
+		base_damage, crit = super().compute_damage(opponent)
+		damage = base_damage + self.current_bonus
+		return damage, crit
